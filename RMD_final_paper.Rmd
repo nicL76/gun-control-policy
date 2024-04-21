@@ -1,0 +1,302 @@
+---
+title: "Factors Explaining an Opposition to Gun Control Policy"
+author: "Nicholas Lukman"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r echo=FALSE}
+library(haven)
+library(foreign)
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(arm)
+library(kableExtra)
+library(scales)
+
+```
+
+```{r}
+custom.palette <-brewer_pal("seq", "RdBu", direction = -1)(4)
+
+```
+
+
+``` {r echo=FALSE}
+
+#none of these work
+#data = read_sav("Data/Q2 What factors explain support for gun control in the United States/GSS7216_R3.sav")
+#data = read_sav("GSS_spss/GSS7218_R3.sav")
+data = read.spss('GSS_spss/GSS7218_R3.sav', to.data.frame = TRUE, use.value.labels = FALSE)
+
+#head(data)
+```
+
+```{r echo=FALSE}
+
+#d = data[c("HGUNLAW", "NATCRIME", "REGION", "POLVIEWS", "YEAR")]
+d = data[c("GUNLAW", "NATCRIME", "REGION", "POLVIEWS", "YEAR")]
+
+copy = data[c("HGUNLAW", "NATCRIME", "REGION", "POLVIEWS", "YEAR")]
+
+q = data["HGUNLAW"]
+q = drop_na(q)
+
+
+d = drop_na(d)
+
+#d$HGUNLAW = as.numeric(d$HGUNLAW)
+#d = d %>% mutate(HGUNLAW=recode(HGUNLAW, '1'='1', '2'='0'))
+#d$HGUNLAW = as.numeric(d$HGUNLAW)
+
+
+d$GUNLAW = as.numeric(d$GUNLAW)
+d = d %>% mutate(GUNLAW=recode(GUNLAW, '1'='0', '2'='1'))
+d$GUNLAW = as.numeric(d$GUNLAW)
+
+
+
+
+d$NATCRIME = as.factor(d$NATCRIME)
+d = d %>% mutate(NATCRIME=recode(NATCRIME,
+                                 '1'='Too little',
+                                 '2'='About right',
+                                 '3'='Too much'))
+
+
+
+d$REGION = as.factor(d$REGION)
+d = d %>% mutate(REGION=recode(REGION,
+                                '1'='New England',
+                                '2'='Middle Atlantic',
+                                '3'='East North Central',
+                                '4'='West North Central',
+                                '5'='South Atlantic',
+                                '6'='East South Central',
+                                '7'='West South Central',
+                                '8'='Mountain',
+                                '9'='Pacific'))
+
+d$POLVIEWS = as.numeric(d$POLVIEWS)
+
+#unique(d["YEAR"])
+
+
+
+#unique(d["GUNLAW"])
+```
+
+
+
+
+# Introduction 
+
+Gun control policy has been a conscientious topic of debate within the US for decades now with the large majority of the public being for some form of policy reform. There does however remain a subset of the population that are still against proposed gun control policy despite shifting public opinion. Our aim is to dissect the apparent partisanship surrounding gun control support in answering the question of what factors explain the opposition of gun control within the United States.
+This report will attempt to establish a theory to explain this position of opposition for stricter gun control policy by building an explanatory model from survey data collected from throughout the country. We hypothesis that our dependent variable representing a person's inclination against stricter gun control policy, GUNLAW, has a strong positive correlation with our independent variables, their conservative political affiliation, POLIVIEWS, geography, REGION, and sense of safety and crime within their local neighborhood, NATCRIME. We conduct this analysis through performing a multinomial logistical regression analysis. Through this study we expect to find a strong correlation between the dependent and independent variables.
+
+\vspace{6mm}
+
+# Literature and theory
+
+Over the past couple of decades, There has been an increasing rise among US citizens for some forms of reform to gun control laws with polling showing up to 90 percent of Americans supporting at least some form of restrictions to gun ownership such as mental health restrictions and universal background checks when attempting to purchase a firearm^(1-2)^. This increasing support within the population has been attributed to the rising number of mass shooting events that have transpired and their associated media coverage^(3)^. There does still however remain a large segment of the population who don't believe in this reform. We attribute the factors leading to this dissonance to a person's conservative political affiliation, their georgraphy and their rate of perceived crime within their neighborhood.
+
+Opposition to gun control policy within the US is often attributed in the literature to many different factors but one that stands out the most is a citizen's conservative political affiliation. This makes sense as a conservative ideology aims to preserve traditional values such as its inclination towards protecting the second amendment of the US constitution which protects a citizen's right to keep and bear arms^(4-6)^. A deep rooted ideology in preserving these traditional values would thus theoretically translate to a strong inclination in oppoising gun control policy.
+
+Gun control opposition has also been linked with a person's geography in where they live with polling showing Americans living within rural of the country areas being more lenient towards gun laws compared to those living in urban cites^(7-8)^. Data has also shown that specifically Americans living outside of the north-east region show a greater support for gun rights^(9)^ with its population having a 14.2% weighted prevalence of gun ownership and support, significantly lower than the other regions. This seems to indicate that geographical divisions across the country play a large role in this opposition to policy. This would make sense using a theory that residents living in the same geographical area would share similar cultures to one another than those living across different areas and are thus more likely to share similar values on gun control policy, thus making the distinction across different regions of the country useful.
+
+Further, a correlation can be found between gun control support and their rate of perceived crime and danger within their local community. Polling data has shown that despite a lower overall rate of crime within the country over the past two decades, the rate of perceived crime has steadily increased and with that an increase in support for gun rights^(10)^. This makes sense as Americans have the general belief that "armed citizenry makes for a safer community"^(11)^. As firearms have their function rooted in self defence, freedoms to owning them would make sense as a political position if users believed that the state was incapabile of managing crime on their own.
+
+\vspace{6mm}
+
+# Data and methodology 
+
+This report will be using the General Social Survey (GSS) data set from NORC. The GSS surveys adults in the United States on a variety of contemporary societal topics to gather a nationally representative outlook on different "trends in opinions, attitudes and behaviors". 
+
+The GSS provides a plethora of variables that pertain to both opinions on gun control laws as well as the various factors within our theory established prior. The variables chosen to conduct the analysis are as follows:
+
+Dependent variable: GUNLAW
+
+GUNLAW refers to whether the respondent agrees or disagrees with whether there should be more legal restrictions on handguns in our society.
+This variable refers to the question of whether the respondent agrees or disagrees with whether a police permit should be required to purchase a gun.
+
+While there are many candidates for a dependent variable for our purposes, GUNLAW seems the most suitable for this study as it directly measures the respondent's views on gun control laws through a specific example of it. GUNLAW contains data ranging from 1972 to 2016, providing a wider analysis available unlike other variables like HGUNLAW which only contain data on a specific year.
+
+GUNLAW is a binary variable between 1 and 2, corresponding to "Agree" and "Disagree" respectively. We've transformed this binary range to 0 to 1 to be used in our regression model.
+
+
+
+```{r echo=FALSE}
+gun = d['GUNLAW']
+tt = as.data.frame(table(gun))
+kbl(tt, caption = "GUNLAW Responses", booktabs = T) %>% kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+
+
+
+Independent variable: POLIVIEWS
+
+POLIVIEWS refers to how the respondent views their own political ideology on a 7 point scale from extremely liberal to extremely conservative. This serves to directly measure the individual's political affiliation as described in the hypothesis.
+
+POLIVIEWS is a numerical data type and follows a normal distribution and thus doesn't need to be transformed.
+```{r echo=FALSE}
+poli = d["POLVIEWS"]
+
+ggplot(data=d, aes(x=POLVIEWS)) + geom_histogram( fill="#69c3a9", color="#e9e3ef")+ 
+  scale_fill_manual(values = custom.palette) +
+    scale_fill_hue(c = 40) + labs(y="Frequency")
+```
+
+Independent variable: REGION
+
+REGION refers to the region of the United States that the interview was taken place. We use this variable as a predictor for which region the interviewee lives in as we assume they live in the same region as where they are being interviewed.
+
+REGION is a categorical data type coded in numbers between 1 and 9. We've recoded it to correspond to the regions in the questionnaire for visual clarity.
+
+```{r echo=FALSE}
+ggplot(data=d, aes(x=REGION)) + geom_bar(fill="#69c3a9", color="#e9e3ef") + coord_flip() + labs(y="Frequency")
+
+```
+
+
+Independent variable: NATCRIME
+
+NATCRIME refers to the degree in which the interviewee believes the government is spending an appropriate amounts of funding and resources in halting the rising crime rate of the region. We use this variable to measure how much crime the interviewee perceives to exist through the assumption that their level of perceived crime is inversely proportional to how well they believe the government is managing it.
+
+```{r echo=FALSE}
+ggplot(data=d, aes(x=NATCRIME)) + geom_bar(fill="#69c3a9", color="#e9e3ef") + labs(y="Frequency")
+```
+
+
+The dimensions of the data set were 64814x6110 but after subsetting the relevant variables and cleaning the data by removing rows containing N/A values, the final dimensions are 21,582 x 4.
+
+Using these variables, we'll run a multinomial logistic model to predict a person's probability of supporting less legal restrictions on guns based on the independent variables. We use a multinomial logistic model due to having multiple independent variables and our dependent variable being binary.
+
+An important limitation to our methodology is the dependent variable being binary. Because it is binary and only asks whether the respondent agrees or disagrees with a specific kind of gun control law being implemented, an nuanced analysis regarding the degree of support or opposition towards gun control policy cannot be held. This methodology is thus limited in the conclusions it can draw by not being able analyse a person's degree of conviction towards their beliefs.
+
+
+\vspace{6mm}
+
+# Results
+
+After running the multinomial logistic regression we obtain the following model.
+```{r echo=FALSE}
+model = glm(GUNLAW ~ REGION + NATCRIME + POLVIEWS, family=binomial(link="logit"), data=d)
+#display(model)
+
+#tab_model(model)
+
+#d["HGUNLAW"]
+
+#ggplot(d, aes(x= POLVIEWS, y=GUNLAW)) + geom_point() + stat_smooth(method="glm", se=FALSE, method.args=list(family=binomial))
+#model
+#coef(summary(model))
+
+```
+
+```{r}
+s = summary(model)$coefficients
+dev =summary(model)$deviance
+ndev =  summary(model)$null.deviance 
+
+Deviances = c("Residual Deviance", "Null Deviance", "Difference" )
+Value = c(dev, ndev, ndev-dev)
+
+devt = data.frame(Deviances, Value)
+#devt
+
+
+invlogit(coef(model)["REGIONMiddle Atlantic"])
+tab = as.data.frame(coef(model))
+#str(tab)
+#tab
+
+#kbl(tab, caption = "Logistic Regression model", booktabs = T) %>% kable_styling(latex_options = "striped")
+
+kbl(s, caption = "regression", booktabs = T) %>% kable_styling(latex_options = "striped")
+kbl(devt, caption = "Deviance", booktabs = T) %>% kable_styling(latex_options = "striped")
+
+#stargazer(model, type="text")
+
+#unique(d["REGION"])
+```
+
+
+From running our regression, we obtain a model which somewhat aligns with our established theory.
+Overall, the model produced a positive difference in its residual deviance to its null deviance of 781.3. This indicates that the independent variables used have provided useful information in its prediction over the null model.
+Each variable however explains the variance of the model to varying degrees.
+
+Our model produced an intercept coefficient of -2.64 indicating that the baseline predicted probability of supporting gun freedom, absent of the other variables, is very low at 6.7%. This result does seem to agree with the established literature in that stronger gun control laws do seem favorable amongst the general population in the US and those that oppose it are only a small minority of population.
+
+```{r}
+#ggplot(d, aes(x= REGION, y=GUNLAW)) + geom_point() + stat_smooth(method="glm", se=FALSE, method.args=list(family=binomial)) +
+#  theme_light()
+
+
+#reg = d %>% group_by(REGION) %>% summarise(np= sum(GUNLAW)/n()) %>% mutate(prop=sum(GUNLAW ==1)/n())
+#reg
+
+#reg = d %>% group_by(GUNLAW, REGION) %>% summarise(np= n()) %>% group_by(REGION) %>% summarise(prop = np/sum(np))
+#reg
+
+
+
+#d
+#reg
+#reg %>% ggplot(aes(x=REGION, y = np, fill=np)) + geom_bar(stat="identity") + coord_flip()
+```
+
+Within the variable REGION, we observe positive coefficients across each of the specific regions indicating there are associated correlations between the dependent variable and each region when compared to the baseline region New England. We can infer from this that residents living in New England are overwhelmingly more likely to not support gun rights relative to the other regions. On the other hand, the residents of the regions most likely to support gun rights are the Mountain and Pacific regions. These findings also heavily agree on the current literature which claims that support for gun rights primarily exists within residents of rural areas which these regions are. Further, the literature does make a strong emphasis on the lack of support for gun rights within the north east region of the US for which New England is a part of. These results thus strongly align with the current literature.
+
+Within the NATCRIME variable, we also observe positive coefficients in both 'Too much' and 'About right' with a baseline variable of spending 'too little' to stop crime. With a coefficient of 0.68 for 'Too much' and 0.23 for 'About right', this seems to suggest that there is a correlation between support for gun rights and believing the government is spending too much resources on preventing crime. While this result does prove that the variable provides useful information for the model, the result interestingly describes the opposite trends than what is described in the literature. This difference could possibly be attributed to the flaw of the assumption made during the variable selection in believing that a person's level of perceived crime is inversely proportional to how appropriate they believe the government is spending to alleviate crime. A potential alternative casual factor to explain this variable could be that 
+
+Within the POLIVIEWS variable, we further observe a positive coefficient indicating a correlation between a person's extent towards identifying with conservative political values and their inclination to not support requiring a police permit to purchase a firearm. This coefficient of 0.17 is however much lower overall than the other variables of the model, suggesting it provides the least amount of information in the model's predicting power. Visually, we can confirm that on its own, the model cannot output a probability of over 50%. The established literature does partially agree with these results in identifying conservative political values as a correlated factor however the literature emphasizes this as the primary factor with the strongest correlation to the gun freedoms rather than the weakest. This discrepency in the strength of the variable could be explained by the limited scope of the dependent variable, discussed earlier. Because a binary dependent variable is used to encapsulate the research question, nuanced perspectives on gun control relative to political views cannot be fully expressed through the question. For example, examining the range of restrictive gun control laws agreeable across different political affiliations is absent from this analysis as only one form of control is measured.
+
+```{r}
+ggplot(d, aes(x= POLVIEWS, y=GUNLAW)) + geom_point(fill="#69c3a9", color="#e9e3ef") + stat_smooth(method="glm", se=TRUE, method.args=list(family=binomial)) +
+  theme_light()
+```
+
+Overall, the regression model does provide a clear analysis of the study and draws associations between factors which for the most part align with pre-existing literature. Despite these conclusions, there does exist various limitations to the study when attempting to answer the aim of the research.
+
+
+
+
+\vspace{6mm}
+
+# Conclusion 
+
+To conclude, we attempted to answer the question, what factors explain the opposition of gun control laws within the United States. Through this study, we explored how the factors, political affiliation, geography and sense of safety contributed to this opposition. By running a multinomial logistical regression analysis, we observed that each of the factors play a contributing role to varying degrees. A person's geography was found to have the strongest association towards their opposition to gun control followed by their sense of safety and political affiliation last. Whilst these results do confirm the pre-existing literature concerning both a person's geography and their political affiliation, factoring into their opposition, the data on the sense of safety of a person seems to deviate from it. We conclude that this descrepency stems from a weak assumption made during variable selection.
+
+This analysis does however pose its own limitations towards drawing a clear conclusion. Mainly, gun control is a nuanced issue wherein each person's opinions on the topic require a more appropriate measurement than a binary variable describing their thoughts which was used in this analysis. A binary variable also doesn't describe the conviction of each respondent's beliefs towards the subject. Future studies should aim to dissect this issue further by trying to measure how strong a person's beliefs towards gun control policy are relative to the factors. This could be done by using alternative data sets which provide more nuanced questions on the topic.
+
+
+#Bibliography 
+
+1. Molla R. Polling is clear: Americans want gun control [Internet]. Vox. 2022. Available from: https://www.vox.com/policy-and-politics/23141651/gun-control-american-approval-polling
+
+2. Barry CL, Stone EM, Crifasi CK, Vernick JS, Webster DW, McGinty EE. Trends In Public Opinion On US Gun Laws: Majorities Of Gun Owners And Non–Gun Owners Support A Range Of Measures. Health Affairs. 2019 Sep 9;38(10):10.1377/hlthaff.
+
+3. Newman BJ, Hartman TK. Mass Shootings and Public Support for Gun Control. British Journal of Political Science. 2019 Oct 2;49(4):1–27.
+
+4. Masters J. U.S. Gun Policy: Global Comparisons [Internet]. Council on Foreign Relations. Council on Foreign Relations; 2022. Available from: https://www.cfr.org/backgrounder/us-gun-policy-global-comparisons
+
+5. Fisher M. Gun Control, Explained. The New York Times [Internet]. 2023 Jan 26; Available from: https://www.nytimes.com/explain/2023/gun-control#where-does-the-us-public-stand-on-the-issue
+
+6. Gun Violence in the United States: Truth and Facts [Internet]. www.fmprc.gov.cn. Available from: https://www.fmprc.gov.cn/mfa_eng/wjbxw/202302/t20230216_11025874.html
+
+7. Schaeffer K. Key Facts about Americans and Guns [Internet]. Pew Research Center. Pew Research Center; 2021. Available from: https://www.pewresearch.org/fact-tank/2021/09/13/key-facts-about-americans-and-guns/
+
+8. Newman BJ, Hartman TK. Mass Shootings and Public Support for Gun Control. British Journal of Political Science. 2019 Oct 2;49(4):1–27.
+
+9. Oraka E, Thummalapally S, Anderson L, Burgess T, Seibert F, Strasser S. A cross-sectional examination of US gun ownership and support for gun control measures: Sociodemographic, geographic, and political associations explored. Preventive Medicine. 2019 Jun;123:179–84.
+
+10. Smith TW. Public Opinion about Gun Policies. The Future of Children. 2002;12(2):154.
+
+11. By. Despite lower crime rates, support for gun rights increases [Internet]. Pew Research Center. Available from: https://www.pewresearch.org/fact-tank/2015/04/17/despite-lower-crime-rates-support-for-gun-rights-increases/
+
+
